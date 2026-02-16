@@ -452,6 +452,11 @@ aplicar_configuracion(){
     # 1. Configurar IP estatica del servidor en la interfaz
     echo "Configurando interfaz de red enp0s8..."
     
+    # Crear directorios si no existen
+    mkdir -p /etc/dhcp
+    mkdir -p /var/lib/dhcp
+    mkdir -p /etc/systemd/network
+    
     # Crear archivo de configuracion de red
     cat > /etc/systemd/network/20-wired.network << EOF
 [Match]
@@ -496,10 +501,8 @@ EOF
     
     # Agregar DNS si fueron configurados
     if [ -n "$dns1" ] && [ -n "$dns2" ]; then
-        # Ambos DNS configurados
         echo "    option domain-name-servers $dns1, $dns2;" >> /etc/dhcp/dhcpd.conf
     elif [ -n "$dns1" ]; then
-        # Solo DNS primario
         echo "    option domain-name-servers $dns1;" >> /etc/dhcp/dhcpd.conf
     fi
     
@@ -514,36 +517,67 @@ EOF
         echo "Archivo de concesiones creado"
     fi
     
-    # Configurar la interfaz en el servicio DHCP
+    # 3. Configurar la interfaz para dhcpd
     echo "Configurando servicio DHCP..."
     
-    # Crear directorio si no existe
+    # Detener el servicio primero
+    systemctl stop dhcpd4.service 2>/dev/null
+    
+    # Crear un archivo drop-in para especificar la interfaz
     mkdir -p /etc/systemd/system/dhcpd4.service.d
     
-    # Editar el archivo de servicio para especificar la interfaz
-    cat > /etc/systemd/system/dhcpd4.service.d/override.conf << EOF
+    cat > /etc/systemd/system/dhcpd4.service.d/interface.conf << EOF
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dhcpd -4 -q -cf /etc/dhcp/dhcpd.conf -pf /run/dhcpd4.pid enp0s8
+ExecStart=/usr/bin/dhcpd -4 -q -cf /etc/dhcp/dhcpd.conf enp0s8
 EOF
+    
+    echo "Configuracion de interfaz creada"
     
     # Recargar systemd
     systemctl daemon-reload
     
-    # 5. Iniciar y habilitar el servicio DHCP
-    echo "Iniciando servicio DHCP..."
-    systemctl enable dhcpd4.service
-    systemctl restart dhcpd4.service
+    echo "Servicio systemd configurado"
     
-    # Verificar estado
+    # 4. Habilitar el servicio
+    echo "Habilitando servicio DHCP..."
+    systemctl enable dhcpd4.service
+    
+    # 5. Iniciar el servicio
+    echo "Iniciando servicio DHCP..."
+    systemctl start dhcpd4.service
+    
+    # Esperar 3 segundos para que inicie
+    sleep 3
+    
+    # 6. Verificar estado
     if systemctl is-active --quiet dhcpd4.service; then
         echo ""
-        echo "Configuracion aplicada exitosamente"
+        echo "============================================"
+        echo "   Configuracion aplicada exitosamente      "
+        echo "============================================"
         echo "Servidor DHCP activo y funcionando"
+        echo ""
+        echo "Detalles de la configuracion:"
+        echo "  - Interfaz: enp0s8"
+        echo "  - IP del servidor: $ip_inicial/$cidr"
+        echo "  - Rango DHCP: $rango_inicio - $ip_final"
+        echo "  - Mascara: $mascara"
+        echo "============================================"
+        return 0
     else
         echo ""
-        echo "Error: El servicio DHCP no pudo iniciarse"
-        echo "Verifique los logs con: journalctl -xeu dhcpd4.service"
+        echo "============================================"
+        echo "   ERROR: El servicio DHCP no inicio       "
+        echo "============================================"
+        echo ""
+        echo "Detalles del error:"
+        journalctl -xeu dhcpd4.service -n 30 --no-pager
+        echo ""
+        echo "Verificando archivo de configuracion:"
+        echo "--------------------------------------------"
+        cat /etc/dhcp/dhcpd.conf
+        echo "--------------------------------------------"
         return 1
     fi
 }
@@ -618,7 +652,7 @@ verificar_dhcp(){
 
     #verificar si el paquete esta instalado o la idempotencia
 
-    if pacman -Q isc-dhcp-server &>/dev/null; then
+    if pacman -Q dhcp >/dev/null 2>&1; then
         echo "El servidor DHCP esta instalado"
         echo ""
         read -rp "¿Desea reinstalarlo y eliminar configuracion actual? (s/n): " respuesta
@@ -631,14 +665,14 @@ verificar_dhcp(){
         echo "Procediendo con la reinstalacion"
 
         #detener el servicio de dhcp
-        sudo systemctl stop dhcp4.service &>/dev/null
+        systemctl stop dhcp4.service >/dev/null 2>&1
         #desinstalar el paquete dhcp
-        sudo pacman -Rns --noconfirm isc-dhcp-server
+        pacman -Rns --noconfirm --noprogressbar dhcp >/dev/null 2>&1
         #eliminar archivos de configuracion
-        sudo rm -f /etc/dhcp/dhcpd.conf
-        sudo rm -f /var/lib/dhcp/dhcpd.leases
+        rm -f /etc/dhcp/dhcpd.conf
+        rm -f /var/lib/dhcp/dhcpd.leases
 
-        pacman -Q isc-dhcp-server
+        pacman -Q dhcp
 
     else 
         echo "el servidor DHCP no esta instalado"
@@ -648,17 +682,17 @@ verificar_dhcp(){
 instalar_dhcp(){
     echo "Instalacion Servidor DHCP"
 
-    if pacman -Q isc-dhcp-server &>/dev/null; then
+    if pacman -Q dhcp >/dev/null 2>&1; then
         echo "El servidor DHCP ya esta instalado"
         return 0
     fi
 
     echo "Realizando instalacion"
 
-    #Instalar de forma destendida
-    sudo pacman -S --noconfirm isc-dhcp-server
+    #Instalar de forma desatendida
+    pacman -S --noconfirm --noprogressbar dhcp >/dev/null 2>&1
 
-    if pacman -Q isc-dhcp-server &>/dev/null; then
+    if pacman -Q dhcp >/dev/null 2>&1; then
         echo "Instalacion Completada"
     else
         echo "Error: Instalacion Fallida"
@@ -779,13 +813,13 @@ monitorear_estado(){
     echo "-------------------------------------------"
     
     # Verificar si el paquete está instalado
-    if ! pacman -Q isc-dhcp-server &>/dev/null; then
+    if ! pacman -Q dhcp >/dev/null 2>&1; then
         echo "El servidor DHCP NO esta instalado"
         echo "Use la opcion 2 para instalarlo"
         return 1
     fi
     
-    echo "Paquete: isc-dhcp-server - INSTALADO"
+    echo "Paquete: dhcp - INSTALADO"
     echo ""
     
     # Verificar estado del servicio
