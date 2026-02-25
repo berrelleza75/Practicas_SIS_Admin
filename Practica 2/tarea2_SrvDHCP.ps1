@@ -319,6 +319,15 @@ function Aplicar-Configuracion {
         if ($existingScope) {
             Write-Host "El scope $($scopeId.IPAddressToString) ya existe. Activandolo/actualizandolo..."
             Set-DhcpServerv4Scope -ScopeId $scopeId -State Active -LeaseDuration (New-TimeSpan -Seconds $script:leaseTime) -ErrorAction Stop
+            if (-not [string]::IsNullOrWhiteSpace($script:dns1)) {
+                if (-not [string]::IsNullOrWhiteSpace($script:dns2)) {
+                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1),([ipaddress]$script:dns2) -ErrorAction Stop
+                } else {
+                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -ErrorAction Stop
+                }
+            } else {
+                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:ipInicial) -ErrorAction Stop
+            }
         } else {
             Add-DhcpServerv4Scope -Name $script:scopeName `
                 -StartRange $rangoInicio `
@@ -330,16 +339,15 @@ function Aplicar-Configuracion {
         }
         
         # Usar $scopeId para las opciones ---
-        if (-not [string]::IsNullOrWhiteSpace($script:gateway)) {
-            Set-DhcpServerv4OptionValue -ScopeId $scopeId -Router ([ipaddress]$script:gateway) -ErrorAction Stop
-        }
-        
         if (-not [string]::IsNullOrWhiteSpace($script:dns1)) {
             if (-not [string]::IsNullOrWhiteSpace($script:dns2)) {
                 Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1),([ipaddress]$script:dns2) -ErrorAction Stop
-            } else {
-                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -ErrorAction Stop
-            }
+        } else {
+            Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -ErrorAction Stop
+        }
+        } else {
+            # Si no se configuro DNS manualmente, se usa la IP del servidor como DNS por defecto
+            Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:ipInicial) -ErrorAction Stop
         }
         
         Write-Host "Configuracion de interfaz creada"

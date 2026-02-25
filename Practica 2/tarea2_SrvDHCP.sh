@@ -452,10 +452,12 @@ aplicar_configuracion(){
     # 1. Configurar IP estatica del servidor en la interfaz
     echo "Configurando interfaz de red enp0s8..."
     
-    # Crear directorios si no existen
+    # Crear directorios necesarios
     mkdir -p /etc/dhcp
     mkdir -p /var/lib/dhcp
     mkdir -p /etc/systemd/network
+    mkdir -p /run/dhcpd4
+    chmod 755 /run/dhcpd4
     
     # Crear archivo de configuracion de red
     cat > /etc/systemd/network/20-wired.network << EOF
@@ -504,6 +506,8 @@ EOF
         echo "    option domain-name-servers $dns1, $dns2;" >> /etc/dhcp/dhcpd.conf
     elif [ -n "$dns1" ]; then
         echo "    option domain-name-servers $dns1;" >> /etc/dhcp/dhcpd.conf
+    else
+        echo "    option domain-name-servers $ip_inicial;" >> /etc/dhcp/dhcpd.conf
     fi
     
     # Cerrar el bloque subnet
@@ -512,10 +516,9 @@ EOF
     echo "Archivo dhcpd.conf creado"
     
     # Crear archivo de leases si no existe
-    if [ ! -f /var/lib/dhcp/dhcpd.leases ]; then
-        touch /var/lib/dhcp/dhcpd.leases
-        echo "Archivo de concesiones creado"
-    fi
+    touch /var/lib/dhcp/dhcpd.leases
+    chmod 644 /var/lib/dhcp/dhcpd.leases
+    echo "Archivo de concesiones creado"
     
     # 3. Configurar la interfaz para dhcpd
     echo "Configurando servicio DHCP..."
@@ -528,6 +531,7 @@ EOF
     
     cat > /etc/systemd/system/dhcpd4.service.d/interface.conf << EOF
 [Service]
+PIDFile=
 ExecStart=
 ExecStart=/usr/bin/dhcpd -4 -q -cf /etc/dhcp/dhcpd.conf enp0s8
 EOF
