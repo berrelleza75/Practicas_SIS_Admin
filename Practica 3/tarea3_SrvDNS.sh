@@ -162,8 +162,10 @@ instalar_bind(){
     cat > /etc/named.conf << EOF
 options {
     listen-on { 127.0.0.1; $ip_servidor; };
+    listen-on-v6 { none; };
     directory "/var/named";
     allow-query { any; };
+    allow-query-cache { any; };
     recursion yes;
 };
 

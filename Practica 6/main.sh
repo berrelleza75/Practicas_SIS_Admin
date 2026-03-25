@@ -2,7 +2,7 @@
 
 MODULOS="$(dirname "$0")/../Modulos/bash"
 
-source "$MODULOS/funciones_comunes.sh"
+source "$MODULOS/funciones_comunes.sh" 2>/dev/null
 source "$MODULOS/funciones_http.sh"
 
 if [[ "$EUID" -ne 0 ]]; then
@@ -17,36 +17,6 @@ for cmd in curl ss systemctl pacman; do
     fi
 done
 
-get_status() {
-    local servicio=$1
-    local estado
-    estado=$(systemctl is-active "$servicio" 2>/dev/null)
-    case $estado in
-        active)  echo "[active]"   ;;
-        failed)  echo "[failed]"   ;;
-        *)       echo "[inactivo]" ;;
-    esac
-}
-
-# Retorna 0 si el paquete esta instalado
-check_installed() {
-    pacman -Q "$1" &>/dev/null
-}
-
-ACCION_SERVICIO=""
-
-ask_reinstall_or_port() {
-    local servicio=$1
-    echo ""
-    echo "  $servicio ya esta instalado."
-    echo ""
-    echo "  1) Cambiar puerto"
-    echo "  2) Reinstalar limpio"
-    echo "  3) Cancelar"
-    echo ""
-    read -rp "  Opcion [1-3]: " ACCION_SERVICIO
-}
-
 run_apache_menu() {
     clear
     echo "====================================="
@@ -58,22 +28,16 @@ run_apache_menu() {
         ask_reinstall_or_port "Apache2"
         case $ACCION_SERVICIO in
             1)
-                local puerto
-                puerto=$(get_port)
-                [[ $? -ne 0 ]] && return 1
-                set_apache_port "$puerto"
-                create_apache_index "$puerto"
-                set_firewall_rule "$puerto"
+                get_port
+                set_apache_port "$PUERTO_ELEGIDO"
+                create_apache_index "$PUERTO_ELEGIDO"
+                set_firewall_rule "$PUERTO_ELEGIDO"
                 systemctl restart httpd &>/dev/null
-                echo "[OK] Puerto de Apache actualizado a $puerto"
+                echo "[OK] Puerto de Apache actualizado a $PUERTO_ELEGIDO"
                 return 0
                 ;;
-            2)
-                pacman -R --noconfirm apache &>/dev/null
-                ;;
-            *)
-                return 0
-                ;;
+            2) pacman -R --noconfirm apache &>/dev/null ;;
+            *) return 0 ;;
         esac
     fi
 
@@ -83,11 +47,10 @@ run_apache_menu() {
     read -rp "  Elige version: " opcion
     check_input "$opcion" "numero" || return 1
 
-    local puerto
-    puerto=$(get_port)
-    [[ $? -ne 0 ]] && return 1
+    get_port
+    [[ -z "$PUERTO_ELEGIDO" ]] && { echo "[ERROR] Puerto no valido"; return 1; }
 
-    install_apache "$puerto"
+    install_apache "$PUERTO_ELEGIDO"
 }
 
 run_nginx_menu() {
@@ -101,22 +64,16 @@ run_nginx_menu() {
         ask_reinstall_or_port "Nginx"
         case $ACCION_SERVICIO in
             1)
-                local puerto
-                puerto=$(get_port)
-                [[ $? -ne 0 ]] && return 1
-                set_nginx_config "$puerto"
-                create_nginx_index "$puerto"
-                set_firewall_rule "$puerto"
+                get_port
+                set_nginx_config "$PUERTO_ELEGIDO"
+                create_nginx_index "$PUERTO_ELEGIDO"
+                set_firewall_rule "$PUERTO_ELEGIDO"
                 systemctl restart nginx &>/dev/null
-                echo "[OK] Puerto de Nginx actualizado a $puerto"
+                echo "[OK] Puerto de Nginx actualizado a $PUERTO_ELEGIDO"
                 return 0
                 ;;
-            2)
-                pacman -R --noconfirm nginx &>/dev/null
-                ;;
-            *)
-                return 0
-                ;;
+            2) pacman -R --noconfirm nginx &>/dev/null ;;
+            *) return 0 ;;
         esac
     fi
 
@@ -126,11 +83,10 @@ run_nginx_menu() {
     read -rp "  Elige version: " opcion
     check_input "$opcion" "numero" || return 1
 
-    local puerto
-    puerto=$(get_port)
-    [[ $? -ne 0 ]] && return 1
+    get_port
+    [[ -z "$PUERTO_ELEGIDO" ]] && { echo "[ERROR] Puerto no valido"; return 1; }
 
-    install_nginx "$puerto"
+    install_nginx "$PUERTO_ELEGIDO"
 }
 
 run_tomcat_menu() {
@@ -144,33 +100,20 @@ run_tomcat_menu() {
         ask_reinstall_or_port "Tomcat"
         case $ACCION_SERVICIO in
             1)
-                local puerto
-                puerto=$(get_port)
-                [[ $? -ne 0 ]] && return 1
-                set_tomcat_port "$puerto" /opt/tomcat
-                create_tomcat_index "$(cat /opt/tomcat/RELEASE-NOTES 2>/dev/null | grep -m1 'Apache Tomcat Version' | awk '{print $NF}')" "$puerto" /opt/tomcat
-                set_firewall_rule "$puerto"
+                get_port
+                set_tomcat_port "$PUERTO_ELEGIDO" /opt/tomcat
+                create_tomcat_index "$(grep -m1 'Apache Tomcat Version' /opt/tomcat/RELEASE-NOTES 2>/dev/null | awk '{print $NF}')" "$PUERTO_ELEGIDO" /opt/tomcat
+                set_firewall_rule "$PUERTO_ELEGIDO"
                 systemctl restart tomcat &>/dev/null
-                echo "[OK] Puerto de Tomcat actualizado a $puerto"
+                echo "[OK] Puerto de Tomcat actualizado a $PUERTO_ELEGIDO"
                 return 0
                 ;;
-            2)
-                systemctl stop tomcat &>/dev/null
-                rm -rf /opt/tomcat
-                systemctl disable tomcat &>/dev/null
-                rm -f /etc/systemd/system/tomcat.service
-                systemctl daemon-reload
-                ;;
-            *)
-                return 0
-                ;;
+            2) uninstall_tomcat ;;
+            *) return 0 ;;
         esac
     fi
 
-    if ! command -v java &>/dev/null && ! pacman -Q jre17-openjdk-headless &>/dev/null; then
-        echo "[!] Java no encontrado. Instalando JRE..."
-        pacman -S --noconfirm jre17-openjdk-headless &>/dev/null
-    fi
+    check_jdk || return 1
 
     get_tomcat_versions || return 1
 
@@ -187,11 +130,10 @@ run_tomcat_menu() {
 
     echo "  Seleccionado: Tomcat $rama - Version $version"
 
-    local puerto
-    puerto=$(get_port)
-    [[ $? -ne 0 ]] && return 1
+    get_port
+    [[ -z "$PUERTO_ELEGIDO" ]] && { echo "[ERROR] Puerto no valido"; return 1; }
 
-    install_tomcat "$rama" "$version" "$puerto"
+    install_tomcat "$rama" "$version" "$PUERTO_ELEGIDO"
 }
 
 run_main_menu() {

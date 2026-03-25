@@ -1,8 +1,3 @@
-# =============================================
-# Gestor Servidor DNS - Windows PowerShell
-# Equivalente al script dns.sh para Arch Linux
-# Requiere ejecutarse como Administrador
-# =============================================
 
 # --- Funciones de validacion de IPs ---
 

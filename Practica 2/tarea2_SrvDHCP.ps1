@@ -297,6 +297,8 @@ function Aplicar-Configuracion {
             Write-Host "Error: No se encontro un adaptador de red valido"
             return
         }
+
+        Disable-NetAdapterBinding -Name $adapter.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue
         
         Remove-NetIPAddress -InterfaceAlias $adapter.Name -AddressFamily IPv4 -Confirm:$false -ErrorAction SilentlyContinue
         
@@ -312,8 +314,13 @@ function Aplicar-Configuracion {
         $segmento = $octetos[0..2] -join '.'
         $rangoInicio = [ipaddress]"$segmento.$octeto4RangoInicio"
         
-        # ScopeId correcto y evitar scopes duplicados ---
         $scopeId = [ipaddress]$script:redBase
+
+        # Deshabilitar validacion de AD para ambientes sin dominio
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\DHCPServer\Parameters" -Name "DisableRogueDetection" -Value 1 -ErrorAction SilentlyContinue
+        Restart-Service DHCPServer -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+
         $existingScope = Get-DhcpServerv4Scope -ErrorAction SilentlyContinue | Where-Object { $_.ScopeId -eq $scopeId }
 
         if ($existingScope) {
@@ -321,12 +328,12 @@ function Aplicar-Configuracion {
             Set-DhcpServerv4Scope -ScopeId $scopeId -State Active -LeaseDuration (New-TimeSpan -Seconds $script:leaseTime) -ErrorAction Stop
             if (-not [string]::IsNullOrWhiteSpace($script:dns1)) {
                 if (-not [string]::IsNullOrWhiteSpace($script:dns2)) {
-                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1),([ipaddress]$script:dns2) -ErrorAction Stop
+                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1),([ipaddress]$script:dns2) -Force -ErrorAction Stop
                 } else {
-                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -ErrorAction Stop
+                    Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -Force -ErrorAction Stop
                 }
             } else {
-                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:ipInicial) -ErrorAction Stop
+                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:ipInicial) -Force -ErrorAction Stop
             }
         } else {
             Add-DhcpServerv4Scope -Name $script:scopeName `
@@ -338,16 +345,14 @@ function Aplicar-Configuracion {
                 -ErrorAction Stop
         }
         
-        # Usar $scopeId para las opciones ---
         if (-not [string]::IsNullOrWhiteSpace($script:dns1)) {
             if (-not [string]::IsNullOrWhiteSpace($script:dns2)) {
-                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1),([ipaddress]$script:dns2) -ErrorAction Stop
+                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1),([ipaddress]$script:dns2) -Force -ErrorAction Stop
+            } else {
+                Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -Force -ErrorAction Stop
+            }
         } else {
-            Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:dns1) -ErrorAction Stop
-        }
-        } else {
-            # Si no se configuro DNS manualmente, se usa la IP del servidor como DNS por defecto
-            Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:ipInicial) -ErrorAction Stop
+            Set-DhcpServerv4OptionValue -ScopeId $scopeId -DnsServer ([ipaddress]$script:ipInicial) -Force -ErrorAction Stop
         }
         
         Write-Host "Configuracion de interfaz creada"
@@ -382,7 +387,6 @@ function Aplicar-Configuracion {
         Write-Host "Error: $($_.Exception.Message)"
     }
 
-    # Dejar activo SOLO el scope actual (scopeId) y desactivar los demás
     $allScopes = Get-DhcpServerv4Scope -ErrorAction SilentlyContinue
     foreach ($s in $allScopes) {
         if ($s.ScopeId -ne $scopeId -and $s.State -eq 'Active') {

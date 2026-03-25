@@ -1,9 +1,58 @@
 #!/bin/bash
 
-declare -A TOMCAT_RAMAS
-TOMCAT_TOTAL=0
-export TOMCAT_RAMAS
-export TOMCAT_TOTAL
+# ── Estado de servicios ──
+
+get_status() {
+    local servicio=$1
+    local estado
+    estado=$(systemctl is-active "$servicio" 2>/dev/null)
+    case $estado in
+        active)  echo "[active]"   ;;
+        failed)  echo "[failed]"   ;;
+        *)       echo "[inactivo]" ;;
+    esac
+}
+
+check_installed() {
+    pacman -Q "$1" &>/dev/null
+}
+
+ACCION_SERVICIO=""
+export ACCION_SERVICIO
+
+ask_reinstall_or_port() {
+    local servicio=$1
+    echo ""
+    echo "  $servicio ya esta instalado."
+    echo ""
+    echo "  1) Cambiar puerto"
+    echo "  2) Reinstalar limpio"
+    echo "  3) Cancelar"
+    echo ""
+    read -rp "  Opcion [1-3]: " ACCION_SERVICIO
+}
+
+check_jdk() {
+    if ! pacman -Q jdk17-openjdk &>/dev/null && ! pacman -Q jdk11-openjdk &>/dev/null; then
+        echo "[!] JDK no encontrado. Instalando jdk17-openjdk..."
+        pacman -Sy --noconfirm jdk17-openjdk
+        if [[ $? -ne 0 ]]; then
+            echo "[ERROR] Fallo la instalacion de JDK. Instala manualmente: pacman -S jdk17-openjdk"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+uninstall_tomcat() {
+    systemctl stop tomcat &>/dev/null
+    systemctl disable tomcat &>/dev/null
+    rm -f /etc/systemd/system/tomcat.service
+    rm -rf /opt/tomcat
+    systemctl daemon-reload
+}
+
+# ── Firewall ──
 
 get_firewall() {
     if command -v ufw &>/dev/null; then
@@ -114,6 +163,7 @@ check_port() {
 }
 
 PUERTO_ELEGIDO=""
+export PUERTO_ELEGIDO
 
 get_port() {
     local puerto
@@ -243,7 +293,7 @@ create_apache_index() {
 </head>
 <body>
 <div class="card">
-  <div class="logo">A</div>
+  <div class="logo">🪶</div>
   <h1>Apache HTTP Server</h1>
   <div class="version">Version APACHE_VERSION</div>
   <div class="status">ACTIVO</div>
@@ -383,7 +433,7 @@ create_nginx_index() {
 </head>
 <body>
 <div class="card">
-  <div class="logo">N</div>
+  <div class="logo">⚡</div>
   <h1>Nginx Web Server</h1>
   <div class="version">Version NGINX_VERSION</div>
   <div class="status">ACTIVO</div>
@@ -404,8 +454,9 @@ HTMLEOF
 
 # ── Tomcat ──
 
-declare -A TOMCAT_RAMAS
+declare -Ax TOMCAT_RAMAS
 TOMCAT_TOTAL=0
+export TOMCAT_TOTAL
 
 get_tomcat_versions() {
     echo "  Consultando versiones en Apache oficial..."
@@ -471,8 +522,11 @@ set_tomcat_port() {
     local directorio=$2
     local conf="$directorio/conf/server.xml"
 
-    sed -i "s/port=\"8080\"/port=\"$puerto\"/" "$conf"
+    # Reemplazar cualquier puerto en el Connector HTTP/1.1
+    sed -i "/HTTP\/1.1/{ s/port=\"[0-9]*\"/port=\"$puerto\"/g }" "$conf"
+    # Reemplazar el puerto de shutdown
     sed -i "s/port=\"8005\"/port=\"8006\"/" "$conf"
+    sed -i "s/port=\"8009\"/port=\"8010\"/" "$conf"
 }
 
 set_tomcat_security() {
@@ -531,7 +585,7 @@ create_tomcat_index() {
 </head>
 <body>
 <div class="card">
-  <div class="logo">T</div>
+  <div class="logo">🐱</div>
   <h1>Apache Tomcat</h1>
   <div class="version">Version TOMCAT_VERSION</div>
   <div class="status">ACTIVO</div>
