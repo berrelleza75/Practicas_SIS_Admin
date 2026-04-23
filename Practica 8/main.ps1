@@ -21,7 +21,8 @@ function Show-Menu {
     Write-Host "4. Configurar horarios de acceso"
     Write-Host "5. Configurar FSRM"
     Write-Host "6. Configurar AppLocker"
-    Write-Host "7. Salir"
+    Write-Host "7. Cambiar horario de usuario individual"
+    Write-Host "8. Salir"
     Write-Host "================================="
     Write-Host ""
 }
@@ -43,13 +44,14 @@ do {
         "4" { Invoke-ConfigurarLogonHours }
         "5" { Invoke-ConfigurarFSRM }
         "6" { Invoke-ConfigurarAppLocker }
-        "7" { Write-Host "Saliendo..."; break }
+        "7" { Invoke-CambiarHorarioUsuario }
+        "8" { Write-Host "Saliendo..."; break }
         default { Write-Host "Opcion invalida" }
     }
 
-    if ($opcion -ne "7") {
+    if ($opcion -ne "8") {
         Write-Host ""
         Read-Host "Presiona Enter para continuar"
     }
 
-} while ($opcion -ne "7")
+} while ($opcion -ne "8")

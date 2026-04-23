@@ -1,0 +1,5 @@
+Usuario,NombreCompleto,Password,Rol
+admin_identidad,Admin Identidad,P9_Identidad@2026,IAM
+admin_storage,Admin Storage,P9_Storage@2026,Storage
+admin_politicas,Admin Politicas,P9_Politicas@2026,GPO
+admin_auditoria,Admin Auditoria,P9_Auditoria@2026,Auditor

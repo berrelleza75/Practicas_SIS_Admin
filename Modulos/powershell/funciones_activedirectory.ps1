@@ -13,13 +13,12 @@ function Convert-LogonHours {
 
     $bytes = New-Object byte[] 21
 
-    for ($dia = 0; $dia -lt 7; $dia++) {
-        foreach ($hora in $horas) {
-            $horaReal = $hora % 24
-            $bitPos   = ($dia * 24) + $horaReal
-            $byteIdx  = [math]::Floor($bitPos / 8)
-            $bitIdx   = $bitPos % 8
-            $bytes[$byteIdx] = $bytes[$byteIdx] -bor ([byte](1 -shl $bitIdx))
+    foreach ($hora in $horas) {
+        for ($dia = 0; $dia -lt 7; $dia++) {
+            $bitPos  = ($dia * 24) + $hora
+            $byteIdx = [math]::Floor($bitPos / 8)
+            $bitIdx  = $bitPos % 8
+            $bytes[$byteIdx] = $bytes[$byteIdx] -bor (1 -shl $bitIdx)
         }
     }
 
@@ -138,12 +137,12 @@ function Invoke-ConfigurarLogonHours {
     Write-Host ""
     Write-Host "--- Configuracion de Horarios de Acceso ---"
 
-    # Cuates: 8:00 AM - 3:00 PM
-    $horasCuates   = 8..14
+    # Cuates: 8:00 AM - 3:00 PM (UTC-7, se suma 7 horas)
+    $horasCuates   = 15..21
     $bytesCuates   = Convert-LogonHours -horas $horasCuates
 
-    # NoCuates: 3:00 PM - 2:00 AM (cruza medianoche, se maneja con modulo)
-    $horasNoCuates = @(15,16,17,18,19,20,21,22,23,0,1)
+    # NoCuates: 3:00 PM - 2:00 AM (UTC-7, se suma 7 horas)
+    $horasNoCuates = @(22,23,0,1,2,3,4,5,6,7,8)
     $bytesNoCuates = Convert-LogonHours -horas $horasNoCuates
 
     $usuariosCuates   = Get-ADUser -Filter * -SearchBase $ouCuates
@@ -197,4 +196,42 @@ function Invoke-PostReinicio {
 
     Write-Host "Contrasena del Administrador configurada correctamente"
     Write-Host "Ya puedes unir los clientes al dominio"
+}
+
+function Invoke-CambiarHorarioUsuario {
+    Write-Host ""
+    Write-Host "--- Cambiar Horario de Usuario Individual ---"
+
+    $usuario = Read-Host "Ingresa el nombre de usuario (ej. cmendoza)"
+
+    if (-not (Get-ADUser -Filter "SamAccountName -eq '$usuario'" -ErrorAction SilentlyContinue)) {
+        Write-Host "Usuario $usuario no encontrado"
+        return
+    }
+
+    Write-Host "Selecciona el horario:"
+    Write-Host "1. Cuates     (8:00 AM - 3:00 PM)"
+    Write-Host "2. NoCuates   (3:00 PM - 2:00 AM)"
+    Write-Host "3. Sin restriccion (24 horas)"
+
+    $opcion = Read-Host "Elige una opcion"
+
+    switch ($opcion) {
+        "1" {
+            $bytes = Convert-LogonHours -horas (8..14)
+            Set-ADUser -Identity $usuario -Replace @{ logonHours = [byte[]]$bytes }
+            Write-Host "Horario Cuates aplicado a $usuario (8AM-3PM)"
+        }
+        "2" {
+            $bytes = Convert-LogonHours -horas @(15,16,17,18,19,20,21,22,23,0,1)
+            Set-ADUser -Identity $usuario -Replace @{ logonHours = [byte[]]$bytes }
+            Write-Host "Horario NoCuates aplicado a $usuario (3PM-2AM)"
+        }
+        "3" {
+            $bytes = [byte[]](,0xFF * 21)
+            Set-ADUser -Identity $usuario -Replace @{ logonHours = [byte[]]$bytes }
+            Write-Host "Horario sin restriccion aplicado a $usuario"
+        }
+        default { Write-Host "Opcion invalida" }
+    }
 }
