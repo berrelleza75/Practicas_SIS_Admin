@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Práctica 10 - Servidor Web Containerizado</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Servidor Web en Contenedor</h1>
+            <p class="subtitle">Práctica 10 - Administración de Sistemas</p>
+        </header>
+
+        <main>
+            <section class="info-card">
+                <img src="imagen.jpg" alt="Logo Docker" class="logo">
+                <h2>Migración a Contenedores</h2>
+                <p>
+                    Esta página se está sirviendo desde un contenedor Docker
+                    construido sobre Alpine Linux con Nginx.
+                </p>
+            </section>
+
+            <section class="features">
+                <div class="feature">
+                    <h3>Contenedor Personalizado</h3>
+                    <p>Imagen construida desde un Dockerfile.</p>
+                </div>
+                <div class="feature">
+                    <h3>Seguridad</h3>
+                    <p>Server tokens deshabilitados y usuario no-root.</p>
+                </div>
+                <div class="feature">
+                    <h3>Red Aislada</h3>
+                    <p>Comunicación interna por la red <code>infra_red</code>.</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Berrelleza · Semestre 6 · Ingeniería de Software</p>
+        </footer>
+    </div>
+</body>
+</html>

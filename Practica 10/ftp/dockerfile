@@ -1,0 +1,25 @@
+# ============================================
+# Practica 10 - Servidor FTP Personalizado
+# Base: Pure-FTPd (servidor FTP estable y ligero)
+# ============================================
+
+# 1. Imagen base: Pure-FTPd preparado para Docker
+FROM stilliard/pure-ftpd:latest
+
+# 2. Metadatos
+LABEL maintainer="Berrelleza"
+LABEL description="Servidor FTP - Practica 10"
+
+# 3. Variables por defecto (las sobrescribiremos en docker run)
+ENV PUBLICHOST=localhost
+ENV FTP_USER_NAME=ftpuser
+ENV FTP_USER_PASS=ftpPass2026
+ENV FTP_USER_HOME=/home/ftpuser
+ENV FTP_PASSIVE_PORTS=30000:30009
+
+# 4. Exponer puertos
+# 21 = Canal de control FTP
+# 30000-30009 = Canal de datos (modo pasivo)
+EXPOSE 21 30000-30009
+
+# 5. El comando ya viene definido en la imagen base
