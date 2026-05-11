@@ -1,0 +1,66 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: p11_nginx
+    restart: always
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - red_publica
+
+  app:
+    image: httpd:alpine
+    container_name: p11_app
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - red_publica
+      - red_datos
+
+  db:
+    image: postgres:16-alpine
+    container_name: p11_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - red_datos
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: p11_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - red_datos
+
+volumes:
+  db_data:
+
+networks:
+  red_publica:
+    driver: bridge
+  red_datos:
+    driver: bridge
+    internal: true
