@@ -1,0 +1,117 @@
+.title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.subtitle { font-size: 14px; color: var(--text2); margin-bottom: 24px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.section { margin-top: 28px; }
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+
+.pre {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 12px;
+  color: var(--text2);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.refreshBtn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.refreshBtn:hover:not(:disabled) { color: var(--text); }
+.refreshBtn:disabled { opacity: 0.5; cursor: default; }
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.serviceLabel { font-size: 14px; font-weight: 600; }
+
+.tableWrap {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--bg3); }
+
+.mono { font-family: monospace; }
+
+.empty {
+  color: var(--text2);
+  text-align: center;
+  padding: 24px !important;
+}
+
+.btnGreen {
+  background: rgba(34,197,94,0.12);
+  color: var(--green);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.btnGreen:hover { background: rgba(34,197,94,0.22); }
+
+.btnRed {
+  background: rgba(239,68,68,0.12);
+  color: var(--red);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.btnRed:hover { background: rgba(239,68,68,0.22); }

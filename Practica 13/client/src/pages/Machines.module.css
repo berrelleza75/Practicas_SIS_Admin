@@ -1,0 +1,91 @@
+.title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.subtitle { font-size: 14px; color: var(--text2); margin-bottom: 24px; }
+
+.msg {
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.3);
+  color: var(--accent2);
+  padding: 10px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.list { display: flex; flex-direction: column; gap: 16px; }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 600px;
+}
+
+.cardTop { display: flex; justify-content: space-between; align-items: flex-start; }
+
+.name { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+.type { font-size: 12px; color: var(--text2); }
+
+.info { display: flex; align-items: center; gap: 14px; }
+.ip { font-size: 13px; font-family: monospace; color: var(--text2); }
+
+.editBtn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.editBtn:hover { color: var(--text); }
+
+.editForm { display: flex; flex-direction: column; gap: 8px; }
+
+.label { font-size: 12px; font-weight: 600; color: var(--text2); }
+
+.input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.input:focus { border-color: var(--accent); }
+
+.editActions { display: flex; gap: 8px; margin-top: 4px; }
+
+.btnSave {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btnSave:disabled { opacity: 0.5; cursor: default; }
+
+.btnCancel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.services { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
